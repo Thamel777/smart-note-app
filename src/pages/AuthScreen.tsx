@@ -41,19 +41,19 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg dark:bg-gray-800">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-white rounded-lg shadow-lg dark:bg-gray-800">
         <div>
-          <h2 className="text-3xl font-extrabold text-center text-gray-900 dark:text-white">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-gray-900 dark:text-white">
             {isLoginView ? 'Welcome Back!' : 'Create an Account'}
           </h2>
-          <p className="mt-2 text-sm text-center text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-xs sm:text-sm text-center text-gray-600 dark:text-gray-400">
             {isLoginView ? 'Sign in to continue to Smart Note' : 'Get started with your new account'}
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4 rounded-md shadow-sm">
+        <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-3 sm:space-y-4 rounded-md shadow-sm">
             {!isLoginView && (
               <div>
                 <label htmlFor="name" className="sr-only">Full Name</label>

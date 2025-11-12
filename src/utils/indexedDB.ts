@@ -176,15 +176,37 @@ export const addToSyncQueue = async (
   const transaction = db.transaction([SYNC_QUEUE_STORE], 'readwrite');
   const store = transaction.objectStore(SYNC_QUEUE_STORE);
 
-  const queueItem: SyncQueueItem = {
-    id: `${Date.now()}_${noteId}`,
-    operation,
-    noteId,
-    note,
-    timestamp: Date.now()
-  };
+  // First, get existing queue items for this note
+  const getAllRequest = store.getAll();
+  
+  await new Promise<void>((resolve, reject) => {
+    getAllRequest.onsuccess = () => {
+      const existingItems = getAllRequest.result as SyncQueueItem[];
+      
+      // Remove any existing operations for this note
+      existingItems.forEach(item => {
+        if (item.noteId === noteId) {
+          store.delete(item.id);
+        }
+      });
 
-  store.put(queueItem);
+      // Add the new operation
+      const queueItem: SyncQueueItem = {
+        id: `${Date.now()}_${noteId}`,
+        operation,
+        noteId,
+        note,
+        timestamp: Date.now()
+      };
+
+      store.put(queueItem);
+      resolve();
+    };
+    
+    getAllRequest.onerror = () => {
+      reject(getAllRequest.error);
+    };
+  });
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
