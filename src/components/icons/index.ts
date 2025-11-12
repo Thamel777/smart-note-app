@@ -1,0 +1,8 @@
+// Icon exports for easier imports
+export { LogoutIcon } from './LogoutIcon';
+export { MoonIcon } from './MoonIcon';
+export { PlusIcon } from './PlusIcon';
+export { SearchIcon } from './SearchIcon';
+export { ShareIcon } from './ShareIcon';
+export { SunIcon } from './SunIcon';
+export { TrashIcon } from './TrashIcon';
