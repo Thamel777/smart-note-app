@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Note } from '../types';
 import NoteCard from '../components/NoteCard';
 import NoteEditor from '../components/NoteEditor';
@@ -8,27 +8,8 @@ import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
 import { SearchIcon } from '../components/icons/SearchIcon';
 import { LogoutIcon } from '../components/icons/LogoutIcon';
-
-const initialNotes: Note[] = [
-  {
-    id: '1',
-    title: 'Welcome to Smart Note!',
-    content: 'This is your first note. You can edit it, create new notes, and share them with others.\n\n```javascript\nconsole.log("Hello, World!");\n```\n\nEnjoy your journey with Smart Note!',
-    createdAt: Date.now() - 100000
-  },
-  {
-    id: '2',
-    title: 'Meeting Notes - Project X',
-    content: 'Attendees: Alice, Bob, Charlie.\n\n- Discussed Q3 roadmap.\n- Finalized UI/UX designs.\n- Assigned action items.',
-    createdAt: Date.now() - 500000
-  },
-  {
-    id: '3',
-    title: 'My Favorite Recipe',
-    content: 'Spaghetti Carbonara:\n1. Pancetta\n2. Eggs\n3. Pecorino Romano\n4. Black Pepper\n5. Spaghetti',
-    createdAt: Date.now() - 1000000
-  },
-];
+import { useAuth } from '../hooks/useAuth';
+import { useNotes } from '../hooks/useNotes';
 
 interface DashboardProps {
   onShareNote: (note: Note) => void;
@@ -38,36 +19,32 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode, toggleDarkMode }) => {
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [activeNote, setActiveNote] = useState<Note | null>(notes[0] || null);
+  const { user } = useAuth();
+  const { notes, loading, error, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase } = useNotes(user?.uid || null);
+  const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Set first note as active when notes load
+  useEffect(() => {
+    if (notes.length > 0 && !activeNote) {
+      setActiveNote(notes[0]);
+    }
+  }, [notes, activeNote]);
+
   const createNewNote = () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: 'Untitled Note',
-      content: '',
-      createdAt: Date.now(),
-    };
-    setNotes([newNote, ...notes]);
+    const newNote = createNote();
     setActiveNote(newNote);
   };
 
-  const updateNote = (updatedNote: Note) => {
-    const noteIndex = notes.findIndex(note => note.id === updatedNote.id);
-    if (noteIndex > -1) {
-      const newNotes = [...notes];
-      newNotes[noteIndex] = updatedNote;
-      setNotes(newNotes);
-      setActiveNote(updatedNote);
-    }
+  const updateNote = async (updatedNote: Note) => {
+    await updateNoteInFirebase(updatedNote);
+    setActiveNote(updatedNote);
   };
 
-  const deleteNote = (noteId: string) => {
-    const newNotes = notes.filter(note => note.id !== noteId);
-    setNotes(newNotes);
+  const deleteNote = async (noteId: string) => {
+    await deleteNoteFromFirebase(noteId);
     if (activeNote?.id === noteId) {
-      setActiveNote(newNotes[0] || null);
+      setActiveNote(notes[0] || null);
     }
   };
 
@@ -82,10 +59,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
           <div className="flex items-center space-x-2">
-             <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+             <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Toggle dark mode">
               {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
             </button>
-            <button onClick={onLogout} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+            <button onClick={onLogout} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Logout">
               <LogoutIcon className="w-5 h-5" />
             </button>
           </div>
@@ -101,13 +78,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
               className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
-          <button onClick={createNewNote} className="flex items-center justify-center w-full mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700">
+          <button 
+            onClick={createNewNote} 
+            disabled={loading}
+            className="flex items-center justify-center w-full mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <PlusIcon className="w-5 h-5 mr-2" />
             Create New Note
           </button>
+          
+          {/* Error Message */}
+          {error && (
+            <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
+              {error}
+            </div>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredNotes.length > 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            </div>
+          ) : filteredNotes.length > 0 ? (
             filteredNotes.map(note => (
               <NoteCard 
                 key={note.id} 
@@ -117,7 +109,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
               />
             ))
           ) : (
-             <p className="px-4 text-sm text-center text-gray-500">No notes found.</p>
+             <p className="px-4 text-sm text-center text-gray-500">
+               {searchTerm ? 'No notes found.' : 'No notes yet. Create your first note!'}
+             </p>
           )}
         </div>
       </aside>

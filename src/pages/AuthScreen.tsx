@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { EyeIcon, EyeOffIcon } from '../components/icons';
+import { useAuth } from '../hooks/useAuth';
 
 interface AuthScreenProps {
   onLogin: () => void;
@@ -10,20 +11,32 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { signIn, signUp } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
     
-    // Validate credentials
-    if (email === 'temp@example.com' && password === 'Temp@123') {
+    try {
+      if (isLoginView) {
+        // Sign in existing user
+        await signIn(email, password);
+      } else {
+        // Sign up new user
+        await signUp(email, password, name);
+      }
       onLogin();
-    } else {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,6 +51,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
             {isLoginView ? 'Sign in to continue to Smart Note' : 'Get started with your new account'}
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4 rounded-md shadow-sm">
             {!isLoginView && (
@@ -96,14 +110,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           <div>
             <button
               type="submit"
-              className="relative flex justify-center w-full px-4 py-3 text-sm font-medium text-white border border-transparent rounded-md group bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800"
+              disabled={loading}
+              className="relative flex justify-center w-full px-4 py-3 text-sm font-medium text-white border border-transparent rounded-md group bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoginView ? 'Sign in' : 'Sign up'}
+              {loading ? 'Loading...' : (isLoginView ? 'Sign in' : 'Sign up')}
             </button>
           </div>
         </form>
+
         <div className="text-sm text-center">
-          <button onClick={() => setIsLoginView(!isLoginView)} className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
+          <button 
+            type="button"
+            onClick={() => {
+              setIsLoginView(!isLoginView);
+              setError('');
+            }} 
+            className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          >
             {isLoginView ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
           </button>
         </div>
