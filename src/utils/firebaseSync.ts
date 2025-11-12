@@ -12,7 +12,9 @@ export const saveNoteToFirebase = async (userId: string, note: Note): Promise<vo
       title: note.title,
       content: note.content,
       createdAt: note.createdAt,
-      updatedAt: Date.now()
+      updatedAt: note.updatedAt || Date.now(),
+      shareId: note.shareId || null,
+      versions: note.versions || []
     });
   } catch (error) {
     console.error('Error saving note to Firebase:', error);
@@ -34,7 +36,10 @@ export const loadNotesFromFirebase = async (userId: string): Promise<Note[]> => 
         id,
         title: notesData[id].title,
         content: notesData[id].content,
-        createdAt: notesData[id].createdAt
+        createdAt: notesData[id].createdAt,
+        updatedAt: notesData[id].updatedAt,
+        shareId: notesData[id].shareId,
+        versions: notesData[id].versions || []
       }));
       return notes;
     }
@@ -76,7 +81,10 @@ export const subscribeToNotes = (
         id,
         title: notesData[id].title,
         content: notesData[id].content,
-        createdAt: notesData[id].createdAt
+        createdAt: notesData[id].createdAt,
+        updatedAt: notesData[id].updatedAt,
+        shareId: notesData[id].shareId,
+        versions: notesData[id].versions || []
       }));
       callback(notes);
     } else {

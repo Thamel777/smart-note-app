@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Note } from '../types';
 import { ShareIcon } from './icons/ShareIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { HistoryIcon } from './icons/HistoryIcon';
 import MarkdownRenderer from './MarkdownRenderer';
+import VersionHistory from './VersionHistory';
 
 interface NoteEditorProps {
   note: Note;
@@ -22,6 +24,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
   const [isPreview, setIsPreview] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
@@ -114,6 +117,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
     setShareUrl(null);
   };
 
+  const handleRestoreVersion = (restoredNote: Note) => {
+    setTitle(restoredNote.title);
+    setContent(restoredNote.content);
+    onSave(restoredNote);
+    setIsSaved(true);
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
@@ -146,6 +156,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
             className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             {isPreview ? 'Edit' : 'Preview'}
+          </button>
+          <button 
+            onClick={() => setShowVersionHistory(true)} 
+            className="p-1.5 sm:p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
+            aria-label="Version history"
+            title="Version history"
+          >
+            <HistoryIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button 
             onClick={handleShare} 
@@ -237,6 +255,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
             </div>
           </div>
         </div>
+      )}
+
+      {/* Version History Modal */}
+      {showVersionHistory && (
+        <VersionHistory
+          note={note}
+          onRestore={handleRestoreVersion}
+          onClose={() => setShowVersionHistory(false)}
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   );
