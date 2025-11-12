@@ -20,7 +20,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode, toggleDarkMode }) => {
   const { user } = useAuth();
-  const { notes, loading, error, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase } = useNotes(user?.uid || null);
+  const { notes, loading, error, isOnline, isSyncing, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase } = useNotes(user?.uid || null);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -57,7 +57,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
       {/* Sidebar */}
       <aside className="flex flex-col w-full md:w-1/3 lg:w-1/4 h-screen bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
+            {/* Online/Offline Indicator */}
+            <div className="flex items-center space-x-1">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+          </div>
           <div className="flex items-center space-x-2">
              <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Toggle dark mode">
               {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
@@ -86,6 +95,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
             <PlusIcon className="w-5 h-5 mr-2" />
             Create New Note
           </button>
+          
+          {/* Offline Notice */}
+          {!isOnline && (
+            <div className="mt-4 p-3 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
+              📴 Working offline. Changes will sync when you're back online.
+            </div>
+          )}
           
           {/* Error Message */}
           {error && (
