@@ -10,10 +10,11 @@ interface NoteEditorProps {
   onSave: (note: Note) => void;
   onDelete: (noteId: string) => void;
   onShare: (note: Note) => void;
+  onEditingChange?: (noteId: string | null) => void;
   isDarkMode?: boolean;
 }
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare, isDarkMode = false }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare, onEditingChange, isDarkMode = false }) => {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [isSaved, setIsSaved] = useState(true);
@@ -24,7 +25,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
-  }, [note]);
+    
+    // Clear editing flag when switching notes
+    return () => {
+      if (onEditingChange) {
+        onEditingChange(null);
+      }
+    };
+  }, [note, onEditingChange]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -42,16 +50,30 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
     setIsSaved(false);
+    // Notify that we're editing this note
+    if (onEditingChange) {
+      onEditingChange(note.id);
+    }
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     setIsSaved(false);
+    // Notify that we're editing this note
+    if (onEditingChange) {
+      onEditingChange(note.id);
+    }
   };
 
   const handleSave = () => {
     onSave({ ...note, title, content });
     setIsSaved(true);
+    // Clear editing flag after save
+    if (onEditingChange) {
+      setTimeout(() => {
+        onEditingChange(null);
+      }, 500);
+    }
   };
   
   const handleShare = async () => {

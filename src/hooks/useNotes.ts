@@ -27,6 +27,7 @@ interface UseNotesReturn {
   deleteNote: (noteId: string) => Promise<void>;
   refreshNotes: () => Promise<void>;
   syncNotes: () => Promise<void>;
+  setEditingNote: (noteId: string | null) => void;
 }
 
 export const useNotes = (userId: string | null): UseNotesReturn => {
@@ -34,6 +35,7 @@ export const useNotes = (userId: string | null): UseNotesReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const isOnline = useNetworkStatus();
 
   // Sync pending operations to Firebase
@@ -131,17 +133,29 @@ export const useNotes = (userId: string | null): UseNotesReturn => {
 
       // Subscribe to real-time updates when online
       const unsubscribe = subscribeToNotes(userId, async (updatedNotes) => {
-        setNotes(updatedNotes);
+        // Don't update if user is actively editing a note
+        setNotes(prevNotes => {
+          return updatedNotes.map(firebaseNote => {
+            // If this note is being edited, keep the local version
+            if (editingNoteId === firebaseNote.id) {
+              const localNote = prevNotes.find(n => n.id === firebaseNote.id);
+              return localNote || firebaseNote;
+            }
+            return firebaseNote;
+          });
+        });
         
-        // Update IndexedDB with Firebase changes
+        // Update IndexedDB with Firebase changes (but not the note being edited)
         for (const note of updatedNotes) {
-          await saveNoteToIndexedDB(note, userId);
+          if (note.id !== editingNoteId) {
+            await saveNoteToIndexedDB(note, userId);
+          }
         }
       });
 
       return () => unsubscribe();
     }
-  }, [userId, isOnline, syncNotes]);
+  }, [userId, isOnline, syncNotes, editingNoteId]);
 
   // Auto-sync when coming back online
   useEffect(() => {
@@ -188,6 +202,9 @@ export const useNotes = (userId: string | null): UseNotesReturn => {
   const updateNote = async (updatedNote: Note): Promise<void> => {
     if (!userId) return;
 
+    // Mark note as being edited to prevent Firebase overwrites
+    setEditingNoteId(updatedNote.id);
+
     // Optimistically update UI
     setNotes(prevNotes => 
       prevNotes.map(note => note.id === updatedNote.id ? updatedNote : note)
@@ -217,6 +234,11 @@ export const useNotes = (userId: string | null): UseNotesReturn => {
       setError(err.message);
       // Reload notes on error
       await refreshNotes();
+    } finally {
+      // Clear editing flag after a delay to allow save to complete
+      setTimeout(() => {
+        setEditingNoteId(null);
+      }, 1000);
     }
   };
 
@@ -294,6 +316,7 @@ export const useNotes = (userId: string | null): UseNotesReturn => {
     updateNote,
     deleteNote,
     refreshNotes,
-    syncNotes
+    syncNotes,
+    setEditingNote: setEditingNoteId
   };
 };

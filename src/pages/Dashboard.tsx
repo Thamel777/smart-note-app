@@ -20,7 +20,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode, toggleDarkMode }) => {
   const { user } = useAuth();
-  const { notes, loading, error, isOnline, isSyncing, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase } = useNotes(user?.uid || null);
+  const { notes, loading, error, isOnline, isSyncing, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase, setEditingNote } = useNotes(user?.uid || null);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -141,6 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
             onSave={updateNote}
             onDelete={deleteNote}
             onShare={onShareNote}
+            onEditingChange={setEditingNote}
             isDarkMode={isDarkMode}
           />
         ) : (
