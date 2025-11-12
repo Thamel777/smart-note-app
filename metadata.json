@@ -1,0 +1,5 @@
+{
+  "name": "Smart Note App",
+  "description": "A modern, minimal, and responsive note-taking application built with React and Tailwind CSS. It features a private dashboard for note management and a public read-only view for shared notes.",
+  "requestFramePermissions": []
+}
