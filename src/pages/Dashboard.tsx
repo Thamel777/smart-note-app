@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Note } from '../types';
 import NoteCard from '../components/NoteCard';
 import NoteEditor from '../components/NoteEditor';
@@ -8,122 +8,206 @@ import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
 import { SearchIcon } from '../components/icons/SearchIcon';
 import { LogoutIcon } from '../components/icons/LogoutIcon';
-
-const initialNotes: Note[] = [
-  {
-    id: '1',
-    title: 'Welcome to Smart Note!',
-    content: 'This is your first note. You can edit it, create new notes, and share them with others.\n\n```javascript\nconsole.log("Hello, World!");\n```\n\nEnjoy your journey with Smart Note!',
-    createdAt: Date.now() - 100000
-  },
-  {
-    id: '2',
-    title: 'Meeting Notes - Project X',
-    content: 'Attendees: Alice, Bob, Charlie.\n\n- Discussed Q3 roadmap.\n- Finalized UI/UX designs.\n- Assigned action items.',
-    createdAt: Date.now() - 500000
-  },
-  {
-    id: '3',
-    title: 'My Favorite Recipe',
-    content: 'Spaghetti Carbonara:\n1. Pancetta\n2. Eggs\n3. Pecorino Romano\n4. Black Pepper\n5. Spaghetti',
-    createdAt: Date.now() - 1000000
-  },
-];
+import { useAuth } from '../hooks/useAuth';
+import { useNotes } from '../hooks/useNotes';
 
 interface DashboardProps {
-  onShareNote: (note: Note) => void;
+  onShareNote: (note: Note) => Promise<string>;
   onLogout: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode, toggleDarkMode }) => {
-  const [notes, setNotes] = useState<Note[]>(initialNotes);
-  const [activeNote, setActiveNote] = useState<Note | null>(notes[0] || null);
+  const { user } = useAuth();
+  const { notes, loading, error, isOnline, isSyncing, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase, setEditingNote } = useNotes(user?.uid || null);
+  const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showMobileEditor, setShowMobileEditor] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut for search (Ctrl+F or Cmd+F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      // ESC to clear search
+      if (e.key === 'Escape' && searchTerm) {
+        setSearchTerm('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchTerm]);
+
+  // Set first note as active when notes load
+  useEffect(() => {
+    if (notes.length > 0 && !activeNote) {
+      setActiveNote(notes[0]);
+    }
+  }, [notes, activeNote]);
 
   const createNewNote = () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: 'Untitled Note',
-      content: '',
-      createdAt: Date.now(),
-    };
-    setNotes([newNote, ...notes]);
+    const newNote = createNote();
     setActiveNote(newNote);
+    setShowMobileEditor(true); // Show editor on mobile
   };
 
-  const updateNote = (updatedNote: Note) => {
-    const noteIndex = notes.findIndex(note => note.id === updatedNote.id);
-    if (noteIndex > -1) {
-      const newNotes = [...notes];
-      newNotes[noteIndex] = updatedNote;
-      setNotes(newNotes);
-      setActiveNote(updatedNote);
-    }
+  const updateNote = async (updatedNote: Note) => {
+    await updateNoteInFirebase(updatedNote);
+    setActiveNote(updatedNote);
   };
 
-  const deleteNote = (noteId: string) => {
-    const newNotes = notes.filter(note => note.id !== noteId);
-    setNotes(newNotes);
+  const deleteNote = async (noteId: string) => {
+    await deleteNoteFromFirebase(noteId);
     if (activeNote?.id === noteId) {
-      setActiveNote(newNotes[0] || null);
+      setActiveNote(notes[0] || null);
+      setShowMobileEditor(false); // Go back to list on mobile
     }
+  };
+
+  const handleNoteSelect = (note: Note) => {
+    setActiveNote(note);
+    setShowMobileEditor(true); // Show editor on mobile
+  };
+
+  const handleBackToList = () => {
+    setShowMobileEditor(false); // Go back to list on mobile
   };
 
   const filteredNotes = notes
     .filter(note => note.title.toLowerCase().includes(searchTerm.toLowerCase()) || note.content.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => b.createdAt - a.createdAt);
 
+  const clearSearch = () => {
+    setSearchTerm('');
+    searchInputRef.current?.focus();
+  };
+
   return (
     <div className="flex h-screen text-gray-800 bg-gray-100 dark:text-gray-200 dark:bg-gray-900">
-      {/* Sidebar */}
-      <aside className="flex flex-col w-full md:w-1/3 lg:w-1/4 h-screen bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+      {/* Sidebar - Hidden on mobile when editor is shown */}
+      <aside className={`flex flex-col w-full md:w-1/3 lg:w-1/4 h-screen bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 ${showMobileEditor ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
           <div className="flex items-center space-x-2">
-             <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-              {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+            <h1 className="text-lg md:text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
+            {/* Online/Offline Indicator */}
+            <div className="hidden sm:flex items-center space-x-1">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1 sm:space-x-2">
+             <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Toggle dark mode">
+              {isDarkMode ? <SunIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
-            <button onClick={onLogout} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-              <LogoutIcon className="w-5 h-5" />
+            <button onClick={onLogout} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Logout">
+              <LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <div className="relative">
-            <SearchIcon className="absolute w-5 h-5 text-gray-400 top-2.5 left-3"/>
+            <SearchIcon className="absolute w-4 h-4 sm:w-5 sm:h-5 text-gray-400 top-2 sm:top-2.5 left-3 pointer-events-none"/>
             <input 
+              ref={searchInputRef}
               type="text" 
-              placeholder="Search notes..."
+              placeholder="Search notes... (Ctrl+F)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600"
+              className="w-full pl-9 sm:pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 transition-all"
             />
+            {/* Clear button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-2 sm:top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Clear search"
+                title="Clear search (Esc)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
           </div>
-          <button onClick={createNewNote} className="flex items-center justify-center w-full mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700">
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Create New Note
+          
+          {/* Search Results Count */}
+          {searchTerm && (
+            <div className="mt-2 px-2 text-xs text-gray-500 dark:text-gray-400">
+              {filteredNotes.length === 0 ? (
+                <span className="text-orange-600 dark:text-orange-400">No notes found</span>
+              ) : (
+                <span>
+                  Found {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+                </span>
+              )}
+            </div>
+          )}
+          
+          <button 
+            onClick={createNewNote} 
+            disabled={loading}
+            className="flex items-center justify-center w-full mt-3 sm:mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            <span className="hidden sm:inline">Create New Note</span>
+            <span className="sm:hidden">New Note</span>
           </button>
+          
+          {/* Online/Offline Indicator - Mobile only */}
+          <div className="flex sm:hidden items-center justify-center mt-2 space-x-1">
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
+            </span>
+          </div>
+          
+          {/* Offline Notice */}
+          {!isOnline && (
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 text-xs sm:text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
+              📴 <span className="hidden sm:inline">Working offline. Changes will sync when you're back online.</span>
+              <span className="sm:hidden">Offline mode</span>
+            </div>
+          )}
+          
+          {/* Error Message */}
+          {error && (
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 text-xs sm:text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
+              {error}
+            </div>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filteredNotes.length > 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            </div>
+          ) : filteredNotes.length > 0 ? (
             filteredNotes.map(note => (
               <NoteCard 
                 key={note.id} 
                 note={note} 
                 isActive={activeNote?.id === note.id} 
-                onClick={() => setActiveNote(note)}
+                onClick={() => handleNoteSelect(note)}
+                searchTerm={searchTerm}
               />
             ))
           ) : (
-             <p className="px-4 text-sm text-center text-gray-500">No notes found.</p>
+             <p className="px-4 text-xs sm:text-sm text-center text-gray-500">
+               {searchTerm ? 'No notes found.' : 'No notes yet. Create your first note!'}
+             </p>
           )}
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 hidden md:block">
+      {/* Main Content - Full width on mobile when active */}
+      <main className={`flex-1 ${showMobileEditor ? 'block' : 'hidden md:block'}`}>
         {activeNote ? (
           <NoteEditor 
             key={activeNote.id}
@@ -131,12 +215,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
             onSave={updateNote}
             onDelete={deleteNote}
             onShare={onShareNote}
+            onEditingChange={setEditingNote}
+            onBack={handleBackToList}
+            isDarkMode={isDarkMode}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <h2 className="text-xl font-semibold">Select a note to view</h2>
-            <p>or create a new one to get started.</p>
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 sm:w-16 sm:h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <h2 className="text-lg sm:text-xl font-semibold">Select a note to view</h2>
+            <p className="text-sm sm:text-base">or create a new one to get started.</p>
           </div>
         )}
       </main>
