@@ -23,6 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
   const { notes, loading, error, isOnline, isSyncing, createNote, updateNote: updateNoteInFirebase, deleteNote: deleteNoteFromFirebase, setEditingNote } = useNotes(user?.uid || null);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showMobileEditor, setShowMobileEditor] = useState(false);
 
   // Set first note as active when notes load
   useEffect(() => {
@@ -34,6 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
   const createNewNote = () => {
     const newNote = createNote();
     setActiveNote(newNote);
+    setShowMobileEditor(true); // Show editor on mobile
   };
 
   const updateNote = async (updatedNote: Note) => {
@@ -45,7 +47,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
     await deleteNoteFromFirebase(noteId);
     if (activeNote?.id === noteId) {
       setActiveNote(notes[0] || null);
+      setShowMobileEditor(false); // Go back to list on mobile
     }
+  };
+
+  const handleNoteSelect = (note: Note) => {
+    setActiveNote(note);
+    setShowMobileEditor(true); // Show editor on mobile
+  };
+
+  const handleBackToList = () => {
+    setShowMobileEditor(false); // Go back to list on mobile
   };
 
   const filteredNotes = notes
@@ -54,58 +66,68 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
 
   return (
     <div className="flex h-screen text-gray-800 bg-gray-100 dark:text-gray-200 dark:bg-gray-900">
-      {/* Sidebar */}
-      <aside className="flex flex-col w-full md:w-1/3 lg:w-1/4 h-screen bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+      {/* Sidebar - Hidden on mobile when editor is shown */}
+      <aside className={`flex flex-col w-full md:w-1/3 lg:w-1/4 h-screen bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 ${showMobileEditor ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
+            <h1 className="text-lg md:text-xl font-bold text-primary-600 dark:text-primary-400">Smart Note</h1>
             {/* Online/Offline Indicator */}
-            <div className="flex items-center space-x-1">
+            <div className="hidden sm:flex items-center space-x-1">
               <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
               </span>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
              <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Toggle dark mode">
-              {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+              {isDarkMode ? <SunIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <MoonIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
             <button onClick={onLogout} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Logout">
-              <LogoutIcon className="w-5 h-5" />
+              <LogoutIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           <div className="relative">
-            <SearchIcon className="absolute w-5 h-5 text-gray-400 top-2.5 left-3"/>
+            <SearchIcon className="absolute w-4 h-4 sm:w-5 sm:h-5 text-gray-400 top-2 sm:top-2.5 left-3"/>
             <input 
               type="text" 
               placeholder="Search notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600"
+              className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
             />
           </div>
           <button 
             onClick={createNewNote} 
             disabled={loading}
-            className="flex items-center justify-center w-full mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center w-full mt-3 sm:mt-4 px-4 py-2 text-sm font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Create New Note
+            <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            <span className="hidden sm:inline">Create New Note</span>
+            <span className="sm:hidden">New Note</span>
           </button>
+          
+          {/* Online/Offline Indicator - Mobile only */}
+          <div className="flex sm:hidden items-center justify-center mt-2 space-x-1">
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {isSyncing ? 'Syncing...' : isOnline ? 'Online' : 'Offline'}
+            </span>
+          </div>
           
           {/* Offline Notice */}
           {!isOnline && (
-            <div className="mt-4 p-3 text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
-              📴 Working offline. Changes will sync when you're back online.
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 text-xs sm:text-sm text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 rounded-lg">
+              📴 <span className="hidden sm:inline">Working offline. Changes will sync when you're back online.</span>
+              <span className="sm:hidden">Offline mode</span>
             </div>
           )}
           
           {/* Error Message */}
           {error && (
-            <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
+            <div className="mt-3 sm:mt-4 p-2 sm:p-3 text-xs sm:text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
               {error}
             </div>
           )}
@@ -121,19 +143,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
                 key={note.id} 
                 note={note} 
                 isActive={activeNote?.id === note.id} 
-                onClick={() => setActiveNote(note)}
+                onClick={() => handleNoteSelect(note)}
               />
             ))
           ) : (
-             <p className="px-4 text-sm text-center text-gray-500">
+             <p className="px-4 text-xs sm:text-sm text-center text-gray-500">
                {searchTerm ? 'No notes found.' : 'No notes yet. Create your first note!'}
              </p>
           )}
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 hidden md:block">
+      {/* Main Content - Full width on mobile when active */}
+      <main className={`flex-1 ${showMobileEditor ? 'block' : 'hidden md:block'}`}>
         {activeNote ? (
           <NoteEditor 
             key={activeNote.id}
@@ -142,13 +164,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
             onDelete={deleteNote}
             onShare={onShareNote}
             onEditingChange={setEditingNote}
+            onBack={handleBackToList}
             isDarkMode={isDarkMode}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <h2 className="text-xl font-semibold">Select a note to view</h2>
-            <p>or create a new one to get started.</p>
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 sm:w-16 sm:h-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <h2 className="text-lg sm:text-xl font-semibold">Select a note to view</h2>
+            <p className="text-sm sm:text-base">or create a new one to get started.</p>
           </div>
         )}
       </main>

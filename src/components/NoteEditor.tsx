@@ -11,10 +11,11 @@ interface NoteEditorProps {
   onDelete: (noteId: string) => void;
   onShare: (note: Note) => Promise<string>;
   onEditingChange?: (noteId: string | null) => void;
+  onBack?: () => void;
   isDarkMode?: boolean;
 }
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare, onEditingChange, isDarkMode = false }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare, onEditingChange, onBack, isDarkMode = false }) => {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [isSaved, setIsSaved] = useState(true);
@@ -115,47 +116,60 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Back button for mobile */}
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="md:hidden p-2 text-gray-500 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-400"
+              aria-label="Back to notes"
+              title="Back to notes"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             {isSaved ? 'Saved' : 'Saving...'}
           </div>
           {note.isShared && (
-            <span className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-300">
+            <span className="hidden sm:inline px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-300">
               Shared
             </span>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <button 
             onClick={() => setIsPreview(!isPreview)} 
-            className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             {isPreview ? 'Edit' : 'Preview'}
           </button>
           <button 
             onClick={handleShare} 
-            className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+            className="p-1.5 sm:p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors"
             aria-label="Share note"
             title="Share note"
           >
-            <ShareIcon className="w-5 h-5" />
+            <ShareIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button 
             onClick={() => onDelete(note.id)} 
-            className="p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-red-600 dark:hover:bg-gray-700 dark:hover:text-red-500"
+            className="p-1.5 sm:p-2 text-gray-500 rounded-full hover:bg-gray-200 hover:text-red-600 dark:hover:bg-gray-700 dark:hover:text-red-500 transition-colors"
             aria-label="Delete note"
             title="Delete note"
           >
-            <TrashIcon className="w-5 h-5" />
+            <TrashIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
       
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
         {isPreview ? (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
               {title || 'Untitled Note'}
             </h1>
             <MarkdownRenderer content={content} isDarkMode={isDarkMode} />
@@ -167,13 +181,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
               value={title}
               onChange={handleTitleChange}
               placeholder="Note Title"
-              className="w-full text-3xl font-bold bg-transparent focus:outline-none text-gray-900 dark:text-white"
+              className="w-full text-2xl sm:text-3xl font-bold bg-transparent focus:outline-none text-gray-900 dark:text-white placeholder-gray-400"
             />
             <textarea
               value={content}
               onChange={handleContentChange}
               placeholder="Start writing... Use ```language for code blocks"
-              className="w-full h-full mt-4 text-lg bg-transparent resize-none focus:outline-none leading-relaxed text-gray-800 dark:text-gray-300"
+              className="w-full h-full mt-3 sm:mt-4 text-base sm:text-lg bg-transparent resize-none focus:outline-none leading-relaxed text-gray-800 dark:text-gray-300 placeholder-gray-400"
             />
           </>
         )}
@@ -181,32 +195,34 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
 
       {/* Share Modal */}
       {showShareModal && shareUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={closeShareModal}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={closeShareModal}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 sm:p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
               Share Note
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
               Anyone with this link can view this note in read-only mode.
             </p>
-            <div className="flex items-center space-x-2 mb-6">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4 sm:mb-6">
               <input
                 type="text"
                 value={shareUrl}
                 readOnly
-                className="flex-1 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none"
+                placeholder="Share URL"
+                title="Shareable URL"
+                className="flex-1 px-3 py-2 text-xs sm:text-sm bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none dark:text-gray-200"
               />
               <button
                 onClick={copyShareLink}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
               >
                 Copy
               </button>
             </div>
-            <div className="flex justify-end space-x-2">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
               <button
                 onClick={closeShareModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
               >
                 Close
               </button>
@@ -214,7 +230,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
                 href={shareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 text-center transition-colors"
               >
                 Open Shared View
               </a>
