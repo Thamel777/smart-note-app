@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
 import { Note } from '../types';
-import NoteCard from './NoteCard';
-import NoteEditor from './NoteEditor';
-import { PlusIcon } from './icons/PlusIcon';
-import { SunIcon } from './icons/SunIcon';
-import { MoonIcon } from './icons/MoonIcon';
-import { SearchIcon } from './icons/SearchIcon';
-import { LogoutIcon } from './icons/LogoutIcon';
+import NoteCard from '../components/NoteCard';
+import NoteEditor from '../components/NoteEditor';
+import { PlusIcon } from '../components/icons/PlusIcon';
+import { SunIcon } from '../components/icons/SunIcon';
+import { MoonIcon } from '../components/icons/MoonIcon';
+import { SearchIcon } from '../components/icons/SearchIcon';
+import { LogoutIcon } from '../components/icons/LogoutIcon';
 
 const initialNotes: Note[] = [
   {

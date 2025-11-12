@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Note, View } from './types';
-import AuthScreen from './components/AuthScreen';
-import Dashboard from './components/Dashboard';
-import SharedNoteView from './components/SharedNoteView';
+import AuthScreen from './pages/AuthScreen';
+import Dashboard from './pages/Dashboard';
+import SharedNoteView from './pages/SharedNoteView';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>(View.Auth);
