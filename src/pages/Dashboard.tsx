@@ -24,6 +24,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileEditor, setShowMobileEditor] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut for search (Ctrl+F or Cmd+F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      // ESC to clear search
+      if (e.key === 'Escape' && searchTerm) {
+        setSearchTerm('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchTerm]);
 
   // Set first note as active when notes load
   useEffect(() => {
@@ -64,6 +82,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
     .filter(note => note.title.toLowerCase().includes(searchTerm.toLowerCase()) || note.content.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => b.createdAt - a.createdAt);
 
+  const clearSearch = () => {
+    setSearchTerm('');
+    searchInputRef.current?.focus();
+  };
+
   return (
     <div className="flex h-screen text-gray-800 bg-gray-100 dark:text-gray-200 dark:bg-gray-900">
       {/* Sidebar - Hidden on mobile when editor is shown */}
@@ -90,15 +113,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
         </div>
         <div className="p-3 sm:p-4">
           <div className="relative">
-            <SearchIcon className="absolute w-4 h-4 sm:w-5 sm:h-5 text-gray-400 top-2 sm:top-2.5 left-3"/>
+            <SearchIcon className="absolute w-4 h-4 sm:w-5 sm:h-5 text-gray-400 top-2 sm:top-2.5 left-3 pointer-events-none"/>
             <input 
+              ref={searchInputRef}
               type="text" 
-              placeholder="Search notes..."
+              placeholder="Search notes... (Ctrl+F)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+              className="w-full pl-9 sm:pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-400 transition-all"
             />
+            {/* Clear button */}
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-2 sm:top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Clear search"
+                title="Clear search (Esc)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
           </div>
+          
+          {/* Search Results Count */}
+          {searchTerm && (
+            <div className="mt-2 px-2 text-xs text-gray-500 dark:text-gray-400">
+              {filteredNotes.length === 0 ? (
+                <span className="text-orange-600 dark:text-orange-400">No notes found</span>
+              ) : (
+                <span>
+                  Found {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+                </span>
+              )}
+            </div>
+          )}
+          
           <button 
             onClick={createNewNote} 
             disabled={loading}
@@ -144,6 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
                 note={note} 
                 isActive={activeNote?.id === note.id} 
                 onClick={() => handleNoteSelect(note)}
+                searchTerm={searchTerm}
               />
             ))
           ) : (
