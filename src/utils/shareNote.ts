@@ -14,10 +14,15 @@ export const generateShareId = (): string => {
  */
 export const shareNote = async (userId: string, note: Note): Promise<string> => {
   try {
+    console.log('📤 shareNote called with userId:', userId, 'noteId:', note.id);
+    
     const shareId = note.shareId || generateShareId();
+    console.log('🔑 Generated/using shareId:', shareId);
     
     // Save to public shared notes path
     const sharedNoteRef = ref(database, `sharedNotes/${shareId}`);
+    console.log('💾 Saving to sharedNotes path...');
+    
     await set(sharedNoteRef, {
       title: note.title,
       content: note.content,
@@ -25,9 +30,12 @@ export const shareNote = async (userId: string, note: Note): Promise<string> => 
       ownerId: userId,
       sharedAt: Date.now()
     });
+    console.log('✅ Saved to sharedNotes successfully');
 
     // Update the user's note to mark it as shared
     const userNoteRef = ref(database, `users/${userId}/notes/${note.id}`);
+    console.log('💾 Updating user note to mark as shared...');
+    
     await set(userNoteRef, {
       title: note.title,
       content: note.content,
@@ -36,10 +44,12 @@ export const shareNote = async (userId: string, note: Note): Promise<string> => 
       isShared: true,
       shareId: shareId
     });
+    console.log('✅ User note updated successfully');
 
+    console.log('🎉 Share complete! Returning shareId:', shareId);
     return shareId;
   } catch (error) {
-    console.error('Error sharing note:', error);
+    console.error('❌ Error in shareNote:', error);
     throw new Error('Failed to share note');
   }
 };

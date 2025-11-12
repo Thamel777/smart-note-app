@@ -9,7 +9,7 @@ interface NoteEditorProps {
   note: Note;
   onSave: (note: Note) => void;
   onDelete: (noteId: string) => void;
-  onShare: (note: Note) => void;
+  onShare: (note: Note) => Promise<string>;
   onEditingChange?: (noteId: string | null) => void;
   isDarkMode?: boolean;
 }
@@ -78,18 +78,26 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete, onShare
   
   const handleShare = async () => {
     try {
+      console.log('🔄 Starting share process for note:', note.id);
+      
       // First save the note
       handleSave();
+      console.log('💾 Note saved, calling onShare...');
       
       // Generate share URL
       const url = await onShare(note);
+      console.log('✅ Share successful! URL:', url);
+      
       if (typeof url === 'string') {
         setShareUrl(url);
         setShowShareModal(true);
+      } else {
+        console.error('❌ Invalid URL returned:', url);
+        alert('Failed to generate share link. Please try again.');
       }
     } catch (error) {
-      console.error('Error sharing note:', error);
-      alert('Failed to share note. Please try again.');
+      console.error('❌ Error sharing note:', error);
+      alert(`Failed to share note: ${error instanceof Error ? error.message : 'Unknown error'}. Please check Firebase rules.`);
     }
   };
 
