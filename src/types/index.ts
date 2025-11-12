@@ -4,6 +4,8 @@ export interface Note {
   title: string;
   content: string;
   createdAt: number;
+  isShared?: boolean;
+  shareId?: string;
 }
 
 export enum View {

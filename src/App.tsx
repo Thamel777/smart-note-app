@@ -5,10 +5,12 @@ import AuthScreen from './pages/AuthScreen';
 import Dashboard from './pages/Dashboard';
 import SharedNoteView from './pages/SharedNoteView';
 import { useAuth } from './hooks/useAuth';
+import { shareNote, getShareableUrl } from './utils/shareNote';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>(View.Auth);
   const [sharedNote, setSharedNote] = useState<Note | null>(null);
+  const [shareIdFromUrl, setShareIdFromUrl] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark';
@@ -18,14 +20,29 @@ const App: React.FC = () => {
 
   const { user, loading, signOut: firebaseSignOut } = useAuth();
 
+  // Check for shared note route on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    const shareMatch = path.match(/^\/note\/([^/]+)$/);
+    
+    if (shareMatch) {
+      const shareId = shareMatch[1];
+      setShareIdFromUrl(shareId);
+      setView(View.SharedNote);
+    }
+  }, []);
+
   // Listen to authentication state changes
   useEffect(() => {
+    // Don't override view if we're viewing a shared note
+    if (shareIdFromUrl) return;
+
     if (user) {
       setView(View.Dashboard);
     } else if (!loading) {
       setView(View.Auth);
     }
-  }, [user, loading]);
+  }, [user, loading, shareIdFromUrl]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -50,14 +67,41 @@ const App: React.FC = () => {
     }
   };
 
-  const handleShareNote = (note: Note) => {
-    setSharedNote(note);
-    setView(View.SharedNote);
+  const handleShareNote = async (note: Note): Promise<string> => {
+    try {
+      if (!user) {
+        throw new Error('Must be logged in to share notes');
+      }
+
+      const shareId = await shareNote(user.uid, note);
+      const shareUrl = getShareableUrl(shareId);
+      
+      // Update the note in local state to mark as shared
+      setSharedNote({
+        ...note,
+        isShared: true,
+        shareId: shareId
+      });
+      
+      return shareUrl;
+    } catch (error) {
+      console.error('Error sharing note:', error);
+      throw error;
+    }
   };
 
   const handleExitSharedView = () => {
     setSharedNote(null);
-    setView(View.Dashboard);
+    setShareIdFromUrl(null);
+    
+    // Reset URL to home
+    window.history.pushState({}, '', '/');
+    
+    if (user) {
+      setView(View.Dashboard);
+    } else {
+      setView(View.Auth);
+    }
   };
 
   // Show loading state while checking authentication
@@ -86,8 +130,25 @@ const App: React.FC = () => {
           />
         );
       case View.SharedNote:
+        // If viewing from URL (public access)
+        if (shareIdFromUrl) {
+          return (
+            <SharedNoteView 
+              shareId={shareIdFromUrl}
+              onExit={handleExitSharedView}
+              isUserLoggedIn={!!user}
+              isDarkMode={isDarkMode}
+            />
+          );
+        }
+        // If viewing from dashboard (logged in user)
         return sharedNote ? (
-          <SharedNoteView note={sharedNote} onExit={handleExitSharedView} isUserLoggedIn={true} />
+          <SharedNoteView 
+            note={sharedNote} 
+            onExit={handleExitSharedView} 
+            isUserLoggedIn={true}
+            isDarkMode={isDarkMode}
+          />
         ) : (
           <Dashboard
             onShareNote={handleShareNote}

@@ -12,7 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotes } from '../hooks/useNotes';
 
 interface DashboardProps {
-  onShareNote: (note: Note) => void;
+  onShareNote: (note: Note) => Promise<string>;
   onLogout: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -141,6 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onShareNote, onLogout, isDarkMode
             onSave={updateNote}
             onDelete={deleteNote}
             onShare={onShareNote}
+            isDarkMode={isDarkMode}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
