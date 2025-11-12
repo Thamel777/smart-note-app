@@ -6,3 +6,5 @@ export { SearchIcon } from './SearchIcon';
 export { ShareIcon } from './ShareIcon';
 export { SunIcon } from './SunIcon';
 export { TrashIcon } from './TrashIcon';
+export { EyeIcon } from './EyeIcon';
+export { EyeOffIcon } from './EyeOffIcon';
