@@ -153,19 +153,16 @@ src/
         ".read": "$userId === auth.uid",
         ".write": "$userId === auth.uid"
       }
+    },
+    "sharedNotes": {
+      "$shareId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
     }
   }
 }
 ```
-
----
-
-## 📖 Documentation
-
-- **[OFFLINE_MODE.md](OFFLINE_MODE.md)** - Complete offline functionality guide
-- **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** - Firebase Authentication setup
-- **[FIREBASE_DATABASE.md](FIREBASE_DATABASE.md)** - Realtime Database setup
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical overview
 
 ---
 
